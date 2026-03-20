@@ -9,6 +9,5 @@ backend/data/raw/*
 backend/data/processed/*
 backend/data/qdrant/*
 .vscode
-frontend
 test_embed.py
 !.gitkeep

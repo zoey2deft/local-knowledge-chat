@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.services.document_service import load_chunks
 from app.services.embedding_service import generate_embedding
 from app.services.llm_service import generate_response
-from app.services.retrieval_service import retrieve_top_chunks
+from app.services.vector_store import search_similar_chunks
 
 SYSTEM_INSTRUCTION = (
     "Answer the question using only the provided context. "
@@ -14,21 +13,17 @@ SYSTEM_INSTRUCTION = (
 
 
 def answer_question(question: str) -> dict[str, Any]:
-    chunks = load_chunks()
-    if not chunks:
+    query_embedding = generate_embedding(question)
+    top_chunks = search_similar_chunks(query_embedding, limit=3)
+    if not top_chunks:
         return {
             "answer": "I don't have any indexed documents yet. Please upload a text file first.",
             "sources": [],
         }
 
-    query_embedding = generate_embedding(question)
-    top_chunks = retrieve_top_chunks(query_embedding, limit=3)
-
     context_sections = []
     for chunk in top_chunks:
-        context_sections.append(
-            f"[{chunk.get('id')}] {chunk.get('text', '')}"
-        )
+        context_sections.append(f"[{chunk.get('id')}] {chunk.get('text', '')}")
 
     context_text = "\n\n".join(context_sections)
     prompt = (
@@ -40,8 +35,8 @@ def answer_question(question: str) -> dict[str, Any]:
 
     sources = [
         {
-            "source": chunk.get("filename"),
-            "chunk_id": chunk.get("id"),
+            "source": chunk.get("source"),
+            "chunk_id": chunk.get("chunk_id"),
             "text_preview": _build_preview(str(chunk.get("text", ""))),
             "similarity": round(float(chunk.get("similarity", 0.0)), 4),
         }
